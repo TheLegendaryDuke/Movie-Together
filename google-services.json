@@ -1,0 +1,51 @@
+{
+  "project_info": {
+    "project_id": "movietogether-2acde",
+    "project_number": "953266465919",
+    "name": "MovieTogether"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:953266465919:android:27d689d63f1b7a06",
+        "client_id": "android:com.google.samples.quickstart.signin",
+        "client_type": 1,
+        "android_client_info": {
+          "package_name": "com.google.samples.quickstart.signin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "953266465919-fd3b1kbnscsgc0qv1hu7ic1rj68jpra6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.google.samples.quickstart.signin",
+            "certificate_hash": "D97BBE08D1640B2DC6BBFF17A9E8D03F1C42653B"
+          }
+        }
+      ],
+      "api_key": [],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "cloud_messaging_service": {
+          "status": 1,
+          "apns_config": []
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "google_signin_service": {
+          "status": 2
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "client_info": [],
+  "ARTIFACT_VERSION": "1"
+}
