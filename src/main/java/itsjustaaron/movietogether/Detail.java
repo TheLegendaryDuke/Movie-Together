@@ -1,6 +1,7 @@
 package itsjustaaron.movietogether;
 
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
@@ -18,6 +19,9 @@ import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferListener;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferState;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -26,25 +30,20 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 
 public class Detail extends AppCompatActivity {
-    AlertDialog ad;
+
+    ProgressDialog pd;
 
     private void updateSchedule(String em1,String em2) {
         try {
             File calendar = Detail.this.getFileStreamPath("calendar.in");
-            FileOutputStream cfos = openFileOutput("calendar.in", MODE_PRIVATE);
-            cfos.write((new DecimalFormat("000000").format(entry.getRef()) + " " + entry.getTime() + " " + entry.getMovie() + "\n").getBytes());
-            cfos.close();
+            Util.writeLine(Detail.this, "calendar.in", (new DecimalFormat("000000").format(entry.getRef()) + " " + entry.getTime() + " " + entry.getMovie() + "\n"));
             Main.transferUtility.upload(Main.bucket, em1 + "/calendar.in", calendar);
             File temp = Detail.this.getFileStreamPath("temp.in");
             Main.transferUtility.download(Main.bucket, em2 + "/calendar.in", temp);
-            cfos = openFileOutput("temp.in", MODE_PRIVATE);
-            cfos.write((new DecimalFormat("000000").format(entry.getRef()) + " " + entry.getTime() + " " + entry.getMovie() + "\n").getBytes());
-            cfos.close();
+            Util.writeLine(Detail.this, "temp.in", (new DecimalFormat("000000").format(entry.getRef()) + " " + entry.getTime() + " " + entry.getMovie() + "\n"));
             Main.transferUtility.upload(Main.bucket, em2 + "/calendar.in", temp);
             Main.transferUtility.download(Main.bucket, em2 + "/entries.in", temp);
-            cfos = openFileOutput("temp.in", MODE_PRIVATE);
-            cfos.write((ref + "\n").getBytes());
-            cfos.close();
+            Util.writeLine(Detail.this, "temp.in", (ref + "\n"));
             Main.transferUtility.upload(Main.bucket, em2 + "/entries.in", temp);
         }catch (Exception e) {
             e.printStackTrace();
@@ -65,32 +64,15 @@ public class Detail extends AppCompatActivity {
         source = getIntent().getExtras().getString("itsjustaaron.movietogether.source");
         ref = getIntent().getExtras().getInt("itsjustaaron.movietogether.ref");
 
+        pd = ProgressDialog.show(Detail.this, "", "Please Wait", true);
+
+        new fetch().execute();
 
 
-        if(source.equals("lobby")) {
-            ((Button)findViewById(R.id.detailPCR)).setText("Propose");
-            ((Button)findViewById(R.id.detailDC)).setVisibility(View.GONE);
-        }else if(source.equals("schedule")) {
-            if(entry.getEmail().equals(Main.Email)) {
-                Button pcr = (Button)findViewById(R.id.detailPCR);
-                Button dc = (Button)findViewById(R.id.detailDC);
-                dc.setText("Delete");
-                if(entry.getClosed()) {
-                    pcr.setText("Reopen");
-                }else {
-                    pcr.setText("Close");
-                }
-            }else {
-                ((Button)findViewById(R.id.detailPCR)).setVisibility(View.GONE);
-                ((Button)findViewById(R.id.detailDC)).setText("Cancel");
-            }
-        }
         Button b = (Button)findViewById(R.id.detailPCR);
         if(b.getText().equals("Close")) {
             new load().execute();
         }
-        ad = new AlertDialog.Builder(this).setTitle("Please Wait").show();
-        new fetch().execute();
     }
 
     private class fetch extends AsyncTask<Void, Void, String> {
@@ -100,26 +82,62 @@ public class Detail extends AppCompatActivity {
         }
 
         protected void onPostExecute(String result) {
-            File img = Detail.this.getFileStreamPath(entry.getMovie() + ".jpg");
+            final File img = Detail.this.getFileStreamPath(entry.getMovie() + ".jpg");
             if(!img.exists()) {
-                Main.transferUtility.download(Main.bucket,entry.getMovie() + ".jpg", img);
-                        ((ImageView) findViewById(R.id.imageView)).setImageBitmap(BitmapFactory.decodeFile(img.getAbsolutePath()));
+                Main.transferUtility.download(Main.bucket,entry.getMovie() + ".jpg", img).setTransferListener(new TransferListener() {
+                    @Override
+                    public void onStateChanged(int i, TransferState transferState) {
+                        if(transferState.equals(TransferState.COMPLETED)) {
+                            if(!img.exists()) {
+                                ((ImageView)findViewById(R.id.imageView)).setImageResource(R.drawable.blank);
+                            }else {
+                                ((ImageView) findViewById(R.id.imageView)).setImageBitmap(BitmapFactory.decodeFile(img.getAbsolutePath()));
+                            }
+                            pd.dismiss();
+                        }
+                    }
+
+                    @Override
+                    public void onProgressChanged(int i, long l, long l1) {
+
+                    }
+
+                    @Override
+                    public void onError(int i, Exception e) {
+
+                    }
+                });
             }
             else {
-
                 ((ImageView) findViewById(R.id.imageView)).setImageBitmap(BitmapFactory.decodeFile(img.getAbsolutePath()));
-            }
-            if(!img.exists()) {
-                ((ImageView)findViewById(R.id.imageView)).setImageResource(R.drawable.blank);
+                pd.dismiss();
             }
 
-            ((TextView)findViewById(R.id.detailRef)).setText(String.valueOf(ref));
+            ((TextView)findViewById(R.id.detailRef)).setText("Reference #" + String.valueOf(ref));
             ((TextView)findViewById(R.id.detailMovie)).setText(entry.getMovie());
             ((TextView)findViewById(R.id.detailLoc)).setText(Main.convert(entry.getLocation()));
-            ((TextView)findViewById(R.id.detailTime)).setText(entry.getTime());
+            String time = entry.getTime();
+            ((TextView)findViewById(R.id.detailTime)).setText(time.substring(0,2) + ":" + time.substring(2,7) + "/" + time.substring(7,9) + "/" + time.substring(9));
             ((TextView)findViewById(R.id.detailName)).setText(entry.getName());
             ((TextView)findViewById(R.id.detailMsg)).setText(entry.getMessage());
-            ad.dismiss();
+            if(source.equals("lobby")) {
+                ((Button)findViewById(R.id.detailPCR)).setText("Propose");
+                ((Button)findViewById(R.id.detailDC)).setVisibility(View.GONE);
+            }else if(source.equals("schedule")) {
+                if(entry.getEmail().equals(Main.Email)) {
+                    Button pcr = (Button)findViewById(R.id.detailPCR);
+                    Button dc = (Button)findViewById(R.id.detailDC);
+                    dc.setText("Delete");
+                    if(entry.getClosed()) {
+                        pcr.setText("Reopen");
+                    }else {
+                        pcr.setText("Close");
+                    }
+                }else {
+                    ((Button)findViewById(R.id.detailPCR)).setVisibility(View.GONE);
+                    ((Button)findViewById(R.id.detailDC)).setText("Cancel");
+                }
+            }
         }
     }
 
@@ -134,6 +152,14 @@ public class Detail extends AppCompatActivity {
                             dialog.dismiss();
                             if (!entry.getPropose().contains(Main.Email)) {
                                 entry.addPropose(Main.Email);
+                                try {
+                                    Util.writeLine(Detail.this, "entries.in", String.valueOf(entry.getRef()));
+                                    if(!Main.Email.equals("guest")) {
+                                        new upload().execute();
+                                    }
+                                }catch (Exception e) {
+                                    e.printStackTrace();
+                                }
                                 new update().execute();
                             }
                         }
@@ -254,6 +280,13 @@ public class Detail extends AppCompatActivity {
         }
     }
 
+    private class upload extends AsyncTask<Void, Void, String> {
+        protected String doInBackground(Void... voids) {
+            Main.transferUtility.upload(Main.bucket, Main.Email + "/entries", getFileStreamPath("entries.in"));
+            return "BOOOOOOO";
+        }
+    }
+
     private class delete extends AsyncTask<Void, Void, String> {
         protected String doInBackground(Void... voids) {
             Main.mapper.delete(entry);
@@ -276,18 +309,24 @@ public class Detail extends AppCompatActivity {
                 BufferedReader br = new BufferedReader(new FileReader(calendar));
                 String entry = br.readLine();
                 FileOutputStream fos = openFileOutput("entries.in", MODE_PRIVATE);
-                if(Integer.parseInt(entry) != (ref)) {
-                    fos.write(entry.getBytes());
-                    fos.write("\n".getBytes());
+                while(entry != null) {
+                    if (Integer.parseInt(entry) != (ref)) {
+                        fos.write(entry.getBytes());
+                        fos.write("\n".getBytes());
+                    }
+                    entry = br.readLine();
                 }
                 fos.close();
                     BufferedReader br2 = new BufferedReader(new FileReader(entries));
                     String cal = br2.readLine();
                     FileOutputStream fos2 = openFileOutput("calendar.in", MODE_PRIVATE);
+                while(cal != null) {
                     if (!cal.substring(0, 6).equals(ref)) {
                         fos.write(cal.getBytes());
                         fos.write("\n".getBytes());
                     }
+                    cal = br2.readLine();
+                }
                     fos2.close();
             }catch (Exception e) {
                 e.printStackTrace();

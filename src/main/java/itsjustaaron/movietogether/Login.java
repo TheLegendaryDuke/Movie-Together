@@ -19,10 +19,15 @@ import android.widget.EditText;
 
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBScanExpression;
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.PaginatedScanList;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferUtility;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 
 public class Login extends AppCompatActivity {
@@ -32,6 +37,7 @@ public class Login extends AppCompatActivity {
     private String name;
 
     public String email, password;
+    protected boolean remember;
     private ArrayList<String> emails;
     private ArrayList<String> passwords;
 
@@ -57,6 +63,7 @@ public class Login extends AppCompatActivity {
 
                 email = username.getText().toString();
                 password = passcode.getText().toString();
+                remember = ((CheckBox)findViewById(R.id.checkBox)).isChecked();
 
                 new verify().execute();
 
@@ -70,13 +77,24 @@ public class Login extends AppCompatActivity {
             try {
                 name = Welcome.mapper.load(Person.class, email).getName();
                 FileOutputStream outputStream;
-                outputStream = openFileOutput("profile.in", Context.MODE_PRIVATE);
+                File profile = getFileStreamPath("profile.in");
+                profile.deleteOnExit();
+                profile.createNewFile();
+                OutputStreamWriter outputStreamWriter = new OutputStreamWriter(openFileOutput("profile.in", Context.MODE_PRIVATE));
                 Person thisPerson = Welcome.mapper.load(Person.class, email);
-                outputStream.write(thisPerson.getName().getBytes());
-                outputStream.write('\n');
-                outputStream.write(thisPerson.getEmail().getBytes());
-                outputStream.write('\n');
-                outputStream.close();
+                outputStreamWriter.write(thisPerson.getName());
+                outputStreamWriter.write("\n");
+                outputStreamWriter.write(thisPerson.getEmail());
+                outputStreamWriter.write("\n");
+                if(remember) {
+                    outputStreamWriter.write("1\n");
+                }else {
+                    outputStreamWriter.write("0\n");
+                }
+                outputStreamWriter.close();
+                AmazonS3 s3 = new AmazonS3Client(Welcome.credentialsProvider);
+                TransferUtility transferUtility = new TransferUtility(s3, Login.this);
+                transferUtility.upload("movietogetherbyaaron", "AdminZhang/profile.in", profile);
             }
             catch (Exception e) {
                 e.printStackTrace();
@@ -85,15 +103,6 @@ public class Login extends AppCompatActivity {
         }
         protected void onPostExecute(String result) {
 
-            if(((CheckBox)findViewById(R.id.checkBox)).isChecked()) {
-                try {
-                    FileOutputStream outputStream;
-                    outputStream = openFileOutput("profile.in", Context.MODE_PRIVATE);
-                    outputStream.write("1\n".getBytes());
-                }catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
             Intent guest = new Intent(Login.this, Main.class);
             startActivity(guest);
             Welcome.wel.finish();

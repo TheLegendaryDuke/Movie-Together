@@ -3,6 +3,7 @@ package itsjustaaron.movietogether;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -43,14 +44,11 @@ public class Lobby extends AppCompatActivity {
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
+        if(Build.VERSION.SDK_INT >= 11)
+            new sync().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        else
+            new sync().execute();
 
-        new sync().execute();
-/*
-        ListView listView = (ListView)findViewById(R.id.listView3);
-        Button btnLoadMore = (Button)findViewById(R.id.button10);
-        listView.addFooterView(btnLoadMore);
-
-*/
         if(Main.Email.equals("guest")) {
             ((ImageButton)findViewById(R.id.button8)).setVisibility(View.GONE);
         }
@@ -91,6 +89,7 @@ public class Lobby extends AppCompatActivity {
         protected void onPostExecute(Integer result) {
             if(result == 0) {
                 findViewById(R.id.listView3).setVisibility(View.GONE);
+                findViewById(R.id.button10).setVisibility(View.GONE);
                 findViewById(R.id.textView15).setVisibility(View.VISIBLE);
                 if(param != null) {
                     ((TextView)findViewById(R.id.textView15)).setText("No Entry Matches Your Search Criteria. Sometimes A Slightly Different Wording Might Help.");
@@ -129,10 +128,12 @@ public class Lobby extends AppCompatActivity {
             case R.id.calendar:
                 Intent intent2 = new Intent(this, Schedule.class);
                 startActivity(intent2);
+                this.finish();
                 return true;
             case R.id.profile:
                 Intent intent = new Intent(this, Profile.class);
                 startActivity(intent);
+                finish();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -160,20 +161,20 @@ public class Lobby extends AppCompatActivity {
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             LayoutInflater inflator = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            View rowView = inflator.inflate(R.layout.rowlayout, parent, false);
+            convertView = inflator.inflate(R.layout.rowlayout, parent, false);
             Entry data = entries.get(position);
-            TextView ref = (TextView)rowView.findViewById(R.id.ref);
-            TextView movie = (TextView)rowView.findViewById(R.id.movie);
-            TextView name = (TextView)rowView.findViewById(R.id.name);
-            TextView time = (TextView)rowView.findViewById(R.id.time);
-            TextView loc = (TextView)rowView.findViewById(R.id.loc);
+            TextView ref = (TextView)convertView.findViewById(R.id.ref);
+            TextView movie = (TextView)convertView.findViewById(R.id.movie);
+            TextView name = (TextView)convertView.findViewById(R.id.name);
+            TextView time = (TextView)convertView.findViewById(R.id.time);
+            TextView loc = (TextView)convertView.findViewById(R.id.loc);
             ref.setText(String.valueOf(data.getRef()));
             movie.setText(data.getMovie());
             name.setText(data.getName());
             String timeS = data.getTime();
             time.setText(timeS.substring(0,2) + ":" + timeS.substring(2,4) + " " + timeS.substring(5,7) + "/" + timeS.substring(7,9) + "/" + timeS.substring(9,13));
             loc.setText(Main.convert(data.getLocation()));
-            return rowView;
+            return convertView;
         }
     }
 
@@ -186,10 +187,12 @@ public class Lobby extends AppCompatActivity {
             case R.id.button8:
                 Intent create = new Intent(Lobby.this, Create.class);
                 startActivity(create);
+                this.finish();
                 return;
             case R.id.button9:
                 Intent search = new Intent(Lobby.this, Search.class);
                 startActivity(search);
+                this.finish();
                 return;
             case R.id.button10:
                 DynamoDBScanExpression dynamoDBScanExpression = new DynamoDBScanExpression();

@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.text.DecimalFormat;
@@ -23,6 +24,19 @@ import java.util.ArrayList;
 public class Create extends AppCompatActivity {
     String message,movie,time,date;
     int loc;
+
+    public static boolean isNumeric(String str)
+    {
+        try
+        {
+            double d = Integer.parseInt(str);
+        }
+        catch(NumberFormatException nfe)
+        {
+            return false;
+        }
+        return true;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,15 +83,15 @@ public class Create extends AppCompatActivity {
                             dialog.dismiss();
                         }
                     }).show();
-                } else if (time.equals("") || time.equals("(HHMM)")) {
-                    new AlertDialog.Builder(Create.this).setTitle("Error").setMessage("Please Enter A Valid Time!").setNeutralButton("OK", new DialogInterface.OnClickListener() {
+                } else if (time.equals("") || time.equals("(HHMM)") || time.length() != 4 || !isNumeric(time)) {
+                    new AlertDialog.Builder(Create.this).setTitle("Error").setMessage("Please Enter A Valid Four-Digit Time!").setNeutralButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             dialog.dismiss();
                         }
                     }).show();
-                } else if (date.equals("") || time.equals("(DDMMYYYY)")) {
-                    new AlertDialog.Builder(Create.this).setTitle("Error").setMessage("Please Enter A Valid Date!").setNeutralButton("OK", new DialogInterface.OnClickListener() {
+                } else if (date.equals("") || date.equals("(DDMMYYYY)") || date.length() != 8 || !isNumeric(date)) {
+                    new AlertDialog.Builder(Create.this).setTitle("Error").setMessage("Please Enter A Valid Eight-Digit Date!").setNeutralButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             dialog.dismiss();
@@ -124,7 +138,9 @@ public class Create extends AppCompatActivity {
             }catch (Exception e) {
                 e.printStackTrace();
             }
-            Main.transferUtility.upload(Main.bucket, Main.Email + "/entries.in", entries);
+            if(!Main.Email.equals("guest")) {
+                Main.transferUtility.upload(Main.bucket, Main.Email + "/entries.in", entries);
+            }
             return "OK";
         }
     }

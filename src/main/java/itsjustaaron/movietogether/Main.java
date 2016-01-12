@@ -1,6 +1,7 @@
 package itsjustaaron.movietogether;
 
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -48,7 +49,11 @@ import static itsjustaaron.movietogether.R.menu.menu_main;
 
 public class Main extends AppCompatActivity {
     public static final String bucket = "movietogetherbyaaron";
-    AlertDialog ad;
+
+    ProgressDialog pd;
+
+    int jobStatus, count;
+    ArrayList<String> movies;
 
     public static String Name;
     public static String Email;
@@ -103,7 +108,6 @@ public class Main extends AppCompatActivity {
 
         ((TextView)findViewById(R.id.TV1)).setText("Hello, " + Name);
 
-        ad = new AlertDialog.Builder(Main.this).setTitle("Please Wait...").show();
 
 
     }
@@ -159,79 +163,24 @@ public class Main extends AppCompatActivity {
     }
 
     private class download extends AsyncTask<Void, Void, String> {
+        protected void onPreExecute() {
+            pd = ProgressDialog.show(Main.this, "", "Please Wait", true);
+            jobStatus = 0;
+            count = 0;
+        }
+
         protected String doInBackground(Void... voids) {
             File file = Main.this.getFileStreamPath("calendar.in");
             File schedule = Main.this.getFileStreamPath("schedule.in");
-            try {
-                schedule.createNewFile();
-            }catch (Exception e) {
-                e.printStackTrace();
-            }
-            TransferObserver observer = transferUtility.download(bucket, "Schedule.in", schedule);
-            TransferObserver observer1 = transferUtility.download(bucket, Email + "/calendar.in", file);
+            movies = new ArrayList<String>();
+            transferUtility.download(bucket, "Schedule.in", schedule).setTransferListener(new Listener());
+            transferUtility.download(bucket, Email + "/calendar.in", file).setTransferListener(new Listener());
             return "success";
         }
         protected void onPostExecute(String s) {
-            File file = Main.this.getFileStreamPath("calendar.in");
-            if(file.exists()) {
-                try {
-                    String event;
-                    BufferedReader br = new BufferedReader(new FileReader(file));
-                    boolean finished = false;
-                    while(true) {
-                        event = br.readLine();
-                        if(event == null)break;
-                        String hour = event.substring(7, 9);
-                        String min = event.substring(9, 11);
-                        String day = event.substring(12, 14);
-                        String month = event.substring(14, 16);
-                        String year = event.substring(16, 20);
-                        Calendar current = Calendar.getInstance();
-                        if(current.YEAR > Integer.parseInt(year)) continue;
-                        else if(current.MONTH > Integer.parseInt(month) && current.YEAR == Integer.parseInt(year)) continue;
-                        else if(current.DAY_OF_MONTH > Integer.parseInt(day) && current.MONTH == Integer.parseInt(month))continue;
-                        else if(current.HOUR_OF_DAY > Integer.parseInt(hour) && current.DAY_OF_MONTH == Integer.parseInt(day))continue;
-                        else if (current.MINUTE > Integer.parseInt(min) && current.HOUR_OF_DAY == Integer.parseInt(hour)) {
-                            continue;
-                        }else {
-                            if(!finished) {
-                                ((TextView) findViewById(R.id.TV2)).setText("ref #" + event.substring(0,6) + " " + hour + ":" + min + " " + day + "/" + month + "/" + year + " ");
-                                finished = true;
-                            }
-                            FileOutputStream outputStream;
-                            outputStream = openFileOutput("calendarTemp.in", Context.MODE_PRIVATE);
-                            outputStream.write(event.getBytes());
-                            outputStream.write('\n');
-                        }
-                    }
-                    file.delete();
-                    File oldFile = Main.this.getFileStreamPath("calendarTemp.in");
-                    oldFile.renameTo(file);
-                }
-                catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            if(!Name.equals("guest")) {
-                new upload().execute();
-            }
 
-            ListView listView = (ListView)findViewById(R.id.listView);
-            ArrayList<String> movies = new ArrayList<String>();
-            try{
-                BufferedReader br = new BufferedReader(new FileReader(Main.this.getFileStreamPath("schedule.in")));
-                String movie = br.readLine();
-                while (movie!= null) {
-                    movies.add(movie);
-                    movie=br.readLine();
-                }
-            }catch (Exception e) {
-                e.printStackTrace();
-            }
-            MyAdapter adapter = new MyAdapter(Main.this, movies);
-            listView.setAdapter(adapter);
-            ad.dismiss();
         }
+
     }
 
     private class MyAdapter extends ArrayAdapter<String> {
@@ -249,12 +198,9 @@ public class Main extends AppCompatActivity {
             LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             View rowView2 = inflater.inflate(R.layout.rowlayout2, parent, false);
             String movie = values.get(position);
-            AlertDialog alertDialog = new AlertDialog.Builder(Main.this).setTitle("Please Wait").show();
             File temp = Main.this.getFileStreamPath(movie + ".jpg");
-            transferUtility.download(bucket, movie + ".JPG", temp);
             ((TextView)rowView2.findViewById(R.id.movieTitle)).setText(movie);
             ((ImageView)rowView2.findViewById(R.id.movieIcon)).setImageBitmap(BitmapFactory.decodeFile(temp.getAbsolutePath()));
-            alertDialog.dismiss();
             return rowView2;
         }
 
@@ -281,5 +227,103 @@ public class Main extends AppCompatActivity {
                 return "Cineplex Cinemas Scarborough";
             default:return "";
         }
+    }
+
+    public class Listener implements TransferListener {
+        public void onStateChanged(int id, TransferState state) {
+            if(state.equals(TransferState.COMPLETED)) {
+                if(jobStatus == 0) {
+                    count++;
+                    if(count == 2) {
+                        File file = Main.this.getFileStreamPath("calendar.in");
+                        if (file.exists()) {
+                            try {
+                                String event;
+                                BufferedReader br = new BufferedReader(new FileReader(file));
+                                boolean finished = false;
+                                FileOutputStream outputStream;
+                                outputStream = openFileOutput("calendarTemp.in", Context.MODE_PRIVATE);
+                                while (true) {
+                                    event = br.readLine();
+                                    if (event == null) break;
+                                    String hour = event.substring(7, 9);
+                                    String min = event.substring(9, 11);
+                                    String day = event.substring(12, 14);
+                                    String month = event.substring(14, 16);
+                                    String year = event.substring(16, 20);
+                                    Calendar current = Calendar.getInstance();
+                                    if (current.YEAR > Integer.parseInt(year)) continue;
+                                    else if (current.MONTH > Integer.parseInt(month) && current.YEAR == Integer.parseInt(year))
+                                        continue;
+                                    else if (current.DAY_OF_MONTH > Integer.parseInt(day) && current.MONTH == Integer.parseInt(month))
+                                        continue;
+                                    else if (current.HOUR_OF_DAY > Integer.parseInt(hour) && current.DAY_OF_MONTH == Integer.parseInt(day))
+                                        continue;
+                                    else if (current.MINUTE > Integer.parseInt(min) && current.HOUR_OF_DAY == Integer.parseInt(hour)) {
+                                        continue;
+                                    } else {
+                                        if (!finished) {
+                                            ((TextView) findViewById(R.id.TV2)).setText("ref #" + event.substring(0, 6) + " " + hour + ":" + min + " " + day + "/" + month + "/" + year + " ");
+                                            finished = true;
+                                        }
+                                        outputStream.write(event.getBytes());
+                                        outputStream.write('\n');
+                                    }
+                                }
+                                outputStream.close();
+                                file.delete();
+                                File oldFile = Main.this.getFileStreamPath("calendarTemp.in");
+                                oldFile.renameTo(file);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        if (!Name.equals("guest")) {
+                            new upload().execute();
+                        }
+                        jobStatus++;
+                        count = 0;
+                        try{
+                            BufferedReader br = new BufferedReader(new FileReader(Main.this.getFileStreamPath("schedule.in")));
+                            String movie = br.readLine();
+                            while (movie!= null) {
+                                movies.add(movie);
+                                movie=br.readLine();
+                            }
+                        }catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        for(int i = 0; i < movies.size(); i++) {
+                            File temp = Main.this.getFileStreamPath(movies.get(i) + ".jpg");
+                            if(temp.exists()) {
+                                count++;
+                            }
+                            else {
+                                transferUtility.download(bucket, movies.get(i) + ".JPG", temp).setTransferListener(new Listener());
+                            }
+                        }
+                        if(count == movies.size()) {
+                            ListView listView = (ListView) findViewById(R.id.listView);
+                            MyAdapter adapter = new MyAdapter(Main.this, movies);
+                            listView.setAdapter(adapter);
+                            pd.dismiss();
+                        }
+                    }
+                }else {
+                    count++;
+                    if(count == movies.size()) {
+                        ListView listView = (ListView) findViewById(R.id.listView);
+                        MyAdapter adapter = new MyAdapter(Main.this, movies);
+                        listView.setAdapter(adapter);
+                        pd.dismiss();
+                    }
+                }
+
+
+            }
+        }
+
+        public void onProgressChanged(int id, long a, long b) {}
+        public void onError(int id, Exception e) {}
     }
 }
