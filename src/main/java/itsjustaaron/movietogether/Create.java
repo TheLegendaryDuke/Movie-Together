@@ -49,7 +49,7 @@ public class Create extends AppCompatActivity {
 
         ArrayList<String> arrayList = new ArrayList<String>();
         arrayList.add("Please Select A Theater");
-        String cinemas[] = {"Cineplex Yonge-Dundas", "Scotiabank Theartre Toronto", "Cineplex Cinemas Varsity", "The Beach Cinemas", "Famous Players Canada Square", "Cineplex Yonge-Eglinton", "Cineplex Don Mills", "Cineplex Yorkdale", "Cineplex Cinemas Scarborough"};
+        String cinemas[] = {"Cineplex Yonge-Dundas", "Scotiabank Theartre Toronto", "Cineplex Cinemas Varsity", "The Beach Cinemas", "Famous Players Canada Square", "Cineplex Yonge-Eglinton", "Cineplex Don Mills", "Cineplex Yorkdale", "Cineplex Cinemas Scarborough", "Galaxy Cinemas Waterloo"};
         for(int i = 0; i < cinemas.length; i++) {
             arrayList.add(cinemas[i]);
         }

@@ -225,6 +225,8 @@ public class Main extends AppCompatActivity {
                 return "Cineplex Yorkdale";
             case 9:
                 return "Cineplex Cinemas Scarborough";
+            case 10:
+                return "Galaxy Cinemas Waterloo";
             default:return "";
         }
     }

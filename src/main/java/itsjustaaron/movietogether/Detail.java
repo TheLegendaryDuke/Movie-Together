@@ -69,10 +69,6 @@ public class Detail extends AppCompatActivity {
         new fetch().execute();
 
 
-        Button b = (Button)findViewById(R.id.detailPCR);
-        if(b.getText().equals("Close")) {
-            new load().execute();
-        }
     }
 
     private class fetch extends AsyncTask<Void, Void, String> {
@@ -88,11 +84,11 @@ public class Detail extends AppCompatActivity {
                     @Override
                     public void onStateChanged(int i, TransferState transferState) {
                         if(transferState.equals(TransferState.COMPLETED)) {
-                            if(!img.exists()) {
-                                ((ImageView)findViewById(R.id.imageView)).setImageResource(R.drawable.blank);
-                            }else {
                                 ((ImageView) findViewById(R.id.imageView)).setImageBitmap(BitmapFactory.decodeFile(img.getAbsolutePath()));
-                            }
+
+                            pd.dismiss();
+                        }else if(transferState.equals((TransferState.FAILED))) {
+                            ((ImageView)findViewById(R.id.imageView)).setImageResource(R.drawable.blank);
                             pd.dismiss();
                         }
                     }
@@ -137,6 +133,10 @@ public class Detail extends AppCompatActivity {
                     ((Button)findViewById(R.id.detailPCR)).setVisibility(View.GONE);
                     ((Button)findViewById(R.id.detailDC)).setText("Cancel");
                 }
+            }
+            Button b = (Button)findViewById(R.id.detailPCR);
+            if(b.getText().equals("Close")) {
+                new load().execute();
             }
         }
     }
